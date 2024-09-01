@@ -1,13 +1,13 @@
 import numpy as np
 import os
-from pylab import *
+import matplotlib.pyplot as plt
 import casadi as ca
 from casadi.tools import *
 
 ############### Seetings ######################
 
 num_datagroup = 300 # number of data groups 
-folder_path = "C:/Users/Xuehua Xiao/Desktop/S1_CartPole/lqr data collecting" # folder to save files
+folder_path = "/home/thuang/code/diffusion/MPC/CartPole/MPC_CartPole/data/LQR" # folder to save files
 
 # Time settings
 T = 3  # Total time (seconds)
@@ -98,8 +98,8 @@ for turn in range(num_datagroup):
  
   #save the initial states
   x0 = np.array([x_0 , 0, theta_0, 0])  # Initial states
-  txtfile = 'initial states'
-  txt_name = txtfile + " " + num_turn_float + '.txt'
+  txtfile = 'initial_states'
+  txt_name = txtfile + "_" + num_turn_float + '.txt'
   full_txt = os.path.join(folder_path, txt_name)
   np.savetxt(full_txt, x0, delimiter=",",fmt='%1.3f')
 
@@ -130,7 +130,7 @@ for turn in range(num_datagroup):
   np.savetxt(full_cvs, u_hist, delimiter=",", fmt='%1.6f')
 
   # Plot some results
-  import matplotlib.pyplot as plt
+  
   if turn in (0, 61, 134, 227, 295):
      plt.figure(figsize=(10, 8))
      plt.subplot(5, 1, 1)

@@ -6,7 +6,7 @@ import control
 ############### Seetings ######################
 
 num_datagroup = 300 # number of data groups 
-folder_path = "C:/Users/Xuehua Xiao/Desktop/S1_CartPole/mpc data collecting"
+folder_path = "/home/thuang/code/diffusion/MPC/CartPole/MPC_CartPole/data/LMPC"
 
 N = 40 # prediction horizon
 
@@ -107,7 +107,8 @@ for turn in range(num_datagroup):
 
   # cost 
   cost = 0
-
+  
+  # horizon in MPC
   for k in range(N):
       x_next = cart_pole_dynamics(X_pre[:, k], U_pre[:, k])
       optimizer.subject_to(X_pre[:, k + 1] == x_next)
