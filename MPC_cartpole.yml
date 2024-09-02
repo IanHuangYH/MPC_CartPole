@@ -1,0 +1,8 @@
+name: MPC_cartpole
+channels:
+  - defaults
+dependencies:
+  - python=3.12
+  - matplotlib
+  - control
+prefix: /home/thuang/anaconda3/envs/MPC_cartpole
