@@ -1,10 +1,9 @@
-import casadi as ca
-import numpy as np
-import os
-import control
+
 import control.optimal as obc
 import control as ct
 import Model_NonlinearCartPole as CPM
+import numpy as np
+from concurrent.futures import ProcessPoolExecutor
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -98,7 +97,7 @@ for turn in range(num_datagroup):
 
         # update
         x0 = x_hist[i]
-        print(t[i])
+        print("t=",t[i])
         print("x0=",x_hist[i-1][0])
         print("x=",x_hist[i][0])
         print("x_dot=",x_hist[i][1])
