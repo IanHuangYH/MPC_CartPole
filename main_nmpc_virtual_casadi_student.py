@@ -1,16 +1,13 @@
+import os
 import casadi as ca
 import numpy as np
-import os
-import control
-import control.optimal as obc
-import control as ct
 import Model_NonlinearCartPole as CPM
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 
-folder_path = "/home/thuang/code/diffusion/MPC/CartPole/MPC_CartPole/data/nMPC"
+folder_path = "data/NMPC/"
 
 
 ############# parameter setting #####################
@@ -22,14 +19,15 @@ H_STATE = H + 1
 
 # mpc parameters
 Q_redundant = 1000.0
+P_redundant = 10000.0
 Q = np.diag([0.01, 0.01, 0, 0.01, Q_redundant])
-R = 0.01
-P = np.diag([0.01, 1, 0, 10, 1000]) # get close to final point
+R = 0.001
+P = np.diag([0.01, 1, 0, 1, P_redundant]) # get close to final point
 P = np.diag([0, 0, 0, 0, 0]) 
 
 TS = 0.01
 TIME_HOR = np.arange(0, H * TS, TS)
-TOTAL_TIME = 2
+TOTAL_TIME = 3
 
 t = np.arange(0, TOTAL_TIME, TS)
 u_initial_value = 10000
@@ -37,6 +35,16 @@ u_update_control = np.zeros((NUM_U,H)) # initial guess
 u_update_control[0][0] = u_initial_value
 x_update_state = np.zeros((NUM_STATE,H_STATE))
 
+# pos
+INITIAL_U = 1000
+INITIAL_X = 10
+# neg
+INITIAL_U = -1000
+INITIAL_X = 0
+if INITIAL_U > 0:
+    initial_guess_filename = 'pos'
+else:
+    initial_guess_filename = 'neg'
 # optimizor setting
 # casadi_Opti
 
@@ -79,8 +87,8 @@ for turn in range(num_datagroup):
     # Simulation history
     x_hist = np.zeros((len(t), len(x0)))
     x_hist[0] = x0
-    u_hist = np.zeros(len(t))
-    cost_hist = np.zeros(len(t))
+    u_hist = np.zeros((len(t),1))
+    cost_hist = np.zeros((len(t),1))
 
     
     # control loop
@@ -88,8 +96,8 @@ for turn in range(num_datagroup):
         optimizer = ca.Opti()
         X_state = optimizer.variable(NUM_STATE, H + 1) # 5xN+1
         U_input = optimizer.variable(1, H) # 1xN
-        optimizer.set_initial(U_input, 10000)
-        optimizer.set_initial(X_state, 10)
+        optimizer.set_initial(U_input, INITIAL_U)
+        optimizer.set_initial(X_state, INITIAL_X)
         
         Xf = optimizer.parameter(NUM_STATE)
         optimizer.set_value(Xf, np.zeros(NUM_STATE))
@@ -121,80 +129,77 @@ for turn in range(num_datagroup):
         #x0 = X_sol[:,1]
         
         # record
-        u_hist[i] = MPC_FirstU
+        u_hist[i][0] = MPC_FirstU
         #x_hist[i+1] = CPM.EulerForwardCartpole_virtual(TS,x_hist[i],MPC_FirstU)
         x_hist[i+1] = x0
-        cost_hist[i+1] = sol.value(cost)
+        cost_hist[i+1][0] = sol.value(cost)
 
-        print(t[i])
-        print("x0=",x_hist[i][0])
-        print("x=",x_hist[i+1][0])
-        print("x_dot=",x_hist[i+1][1])
-        print("theta=",x_hist[i+1][2])
-        print("theta_dot=",x_hist[i+1][3])
-        print("theta_star=",x_hist[i+1][4])
+        print("t=", t[i])
+        # print("x0=",x_hist[i][0])
+        # print("x=",x_hist[i+1][0])
+        # print("x_dot=",x_hist[i+1][1])
+        # print("theta=",x_hist[i+1][2])
+        # print("theta_dot=",x_hist[i+1][3])
+        # print("theta_star=",x_hist[i+1][4])
         print("u=",MPC_FirstU)
-        print("cost=",cost_hist[i+1])
-        print("----------------------------")
+        # print("cost=",cost_hist[i+1][0])
+        # print("----------------------------")
         
 
 
     ######################### save data ##########################
-    # num_turn = turn + 1
-    # num_turn_float = str(num_turn)
+    num_turn = turn + 1
+    num_turn_float = str(num_turn)
 
-  
-    # txtfile = 'initial states'
-    # txt_name = txtfile + " " + num_turn_float + '.txt'
-    # full_txt = os.path.join(folder_path, txt_name)
-    # np.savetxt(full_txt, x0, delimiter=",",fmt='%1.3f')
-
-    # # Save the control inputs to CSV files
-    # cvsfile = 'u_data'
-    # cvs_name = cvsfile + " " + num_turn_float + '.csv'
-    # full_cvs = os.path.join(folder_path, cvs_name)
-    # np.savetxt(full_cvs, U_sol, delimiter=",", fmt='%1.6f')
+    ini_state_txt = 'ini_states_'
+    ini_guess_txt = 'ini_guess_'
+    txt_name = ini_state_txt + num_turn_float + ini_guess_txt + initial_guess_filename + '.txt'
+    full_txt = os.path.join(folder_path, txt_name)
+    
+    t_reshape = t.reshape(-1,1)
+    result = np.hstack((t_reshape, x_hist, u_hist, cost_hist))
+    np.savetxt(full_txt, result, fmt='%15.6f')
 
     ########################### plot some results #########################
-    step = np.linspace(0,H,H+1)
-    step_u = np.linspace(0,H-1,H)
+    # step = np.linspace(0,H,H+1)
+    # step_u = np.linspace(0,H-1,H)
 
     
-    if turn in (0, 61, 134, 227, 295):
-        plt.figure(figsize=(10, 8))
-        plt.subplot(7, 1, 1)
-        plt.plot(t, x_hist[:, 0])
-        plt.ylabel('x (m)')
-        plt.grid()
-        plt.subplot(7, 1, 2)
-        plt.plot(t, x_hist[:, 1])
-        plt.ylabel('x_dot (m/s)')
-        plt.grid()
-        plt.subplot(7, 1, 3)
-        plt.plot(t, x_hist[:, 2])
-        plt.ylabel('theta (rad)')
-        plt.grid()
-        plt.subplot(7, 1, 4)
-        plt.plot(t, x_hist[:, 3])
-        plt.ylabel('theta_dot (rad/s)')
-        plt.grid()
-        plt.subplot(7, 1, 5)
-        plt.plot(t, x_hist[:, 4])
-        plt.ylabel('theta_*')
-        plt.xlabel('Time (s)')
-        plt.grid()
-        plt.subplot(7, 1, 6)
-        plt.plot(t, u_hist)
-        plt.ylabel('u_value')
-        plt.xlabel('Time (s)')
-        plt.grid()
-        plt.subplot(7, 1, 7)
-        plt.plot(t, cost_hist)
-        plt.ylabel('cost')
-        plt.xlabel('Time (s)')
-        plt.grid()
-        plt.show()
-        print("finished plot")
+    # if turn in (0, 61, 134, 227, 295):
+    #     plt.figure(figsize=(10, 8))
+    #     plt.subplot(7, 1, 1)
+    #     plt.plot(t, x_hist[:, 0])
+    #     plt.ylabel('x (m)')
+    #     plt.grid()
+    #     plt.subplot(7, 1, 2)
+    #     plt.plot(t, x_hist[:, 1])
+    #     plt.ylabel('x_dot (m/s)')
+    #     plt.grid()
+    #     plt.subplot(7, 1, 3)
+    #     plt.plot(t, x_hist[:, 2])
+    #     plt.ylabel('theta (rad)')
+    #     plt.grid()
+    #     plt.subplot(7, 1, 4)
+    #     plt.plot(t, x_hist[:, 3])
+    #     plt.ylabel('theta_dot (rad/s)')
+    #     plt.grid()
+    #     plt.subplot(7, 1, 5)
+    #     plt.plot(t, x_hist[:, 4])
+    #     plt.ylabel('theta_*')
+    #     plt.xlabel('Time (s)')
+    #     plt.grid()
+    #     plt.subplot(7, 1, 6)
+    #     plt.plot(t, u_hist)
+    #     plt.ylabel('u_value')
+    #     plt.xlabel('Time (s)')
+    #     plt.grid()
+    #     plt.subplot(7, 1, 7)
+    #     plt.plot(t, cost_hist)
+    #     plt.ylabel('cost')
+    #     plt.xlabel('Time (s)')
+    #     plt.grid()
+    #     plt.show()
+    #     print("finished plot")
 
         # save plot 
         # plotfile = "plt"
